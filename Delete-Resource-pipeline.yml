@@ -1,0 +1,32 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+ - none
+
+pool:
+  name: default
+  vmImage: ubuntu-latest
+
+
+stages:
+  - stage: 
+    jobs:
+    - job: Delete_image_in_azure
+      steps:
+
+      - task: Bash@3
+        inputs:
+          targetType: 'inline'
+          script: |
+            sudo apt update
+            sudo apt -y install azure-cli=2.51.0-1~bullseye
+
+      - task: AzureCLI@2
+        inputs:
+         azureSubscription: 'lab(1)(6221f3bf-b411-4b86-a1a2-5ffdd5f36cd9)'
+         scriptType: 'batch'
+         scriptLocation: 'inlineScript'
+         inlineScript: 'az resource delete $IMAGE_ID'

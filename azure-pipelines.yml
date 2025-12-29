@@ -1,0 +1,97 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- none
+
+pool:
+ name: default
+ vmImage: ubuntu-latest
+
+schedules:
+- cron: "0 19 * * 1"
+  displayName: Weekly run 
+  batch: false
+  branches:
+   include:
+   - main
+   exclude:
+     - feature/*
+     - ft/*
+
+
+
+resources:
+ repositories:
+   - repository: VM Image
+     name: VM Image/VM Image
+     type: git
+
+stages:
+  - stage: 
+    jobs:
+    - job: Build_Packer_Image
+      displayName: BUILD IMAGE PACKER
+      steps:
+      - task: AzureCLI@2
+        displayName: Intsall Packer
+        inputs:
+          azureSubscription: 'lab(1)(6221f3bf-b411-4b86-a1a2-5ffdd5f36cd9)'
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            packer plugins install github.com/hashicorp/azure
+            packer init .
+         
+      - task: AzureCLI@2
+        displayName: Build packer image
+        inputs:
+          azureSubscription: 'lab(1)(6221f3bf-b411-4b86-a1a2-5ffdd5f36cd9)'
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            az account show
+            packer plugins install github.com/hashicorp/azure
+            packer build \
+            -var "client_id=$CLIENT_ID" \
+            -var "tenant_id=$TENANT_ID" \
+            *.pkr.hcl
+        env:
+          PACKER_CLIENT_SECRET: $(packer-client-secret)
+          CLIENT_ID: $(clientId)
+          TENANT_ID: $(tenantId)
+  - stage: 
+    jobs:
+      - job: Resource_Name_Image_name
+        steps:
+        - task: Bash@3
+          inputs:
+            targetType: 'inline'
+            script: |
+              sudo apt update
+              sudo apt -y install jp
+
+        - task: Bash@3
+          displayName: "extractImageId"
+          inputs:
+           targetType: 'inline'
+           script: |
+             echo "Current directory:"
+             pwd
+             echo "Files in directory:"
+             ls -la
+             if [ -f "manifest.json" ]; then
+             echo "Manifest found!"
+             IMAGE_ID=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d':' -f2)
+             echo "Extracted Image ID: $IMAGE_ID"
+             echo "##vso[task.setvariable variable=ImageId;isOutput=true]$IMAGE_ID"
+             else
+             echo "ERROR: manifest.json not found"
+             exit 1
+             fi
+
+           
+
+    
